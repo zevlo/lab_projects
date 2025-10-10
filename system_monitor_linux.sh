@@ -32,17 +32,17 @@ while true; do
   if ((disk_usage >= DISK_THRESHOLD)); then
     send_alert "Disk" "$disk_usage"
   fi
-
+  
   # Display current stats
   clear
   echo "Resource Usage:"
   echo "CPU: $cpu_usage%"
   echo "Memory: $memory_usage%"
   echo "Disk: $disk_usage%"
-
-# Log resource usage to a file
-log_entry="$(date '+%Y-%m-%d %H:%M:%S') CPU: $cpu_usage% Memory: $memory_usage% Disk: $disk_usage%"
-echo "$log_entry" >> /Users/za/Code/github/lab_projects/resource_usage.log
+  
+  # Log resource usage to a file
+  log_entry="$(date '+%Y-%m-%d %H:%M:%S') CPU: $cpu_usage% Memory: $memory_usage% Disk: $disk_usage%"
+  echo "$log_entry" >> "$LOG_FILE"
 
   sleep 2
 done
