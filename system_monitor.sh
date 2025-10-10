@@ -10,6 +10,7 @@ send_alert() {
   echo "$(tput setaf 1)ALERT: $1 usage exceeded threshold! Current value: $2%$(tput sgr0)"
 }
 
+# Main monitoring loop
 while true; do
   # Monitor CPU
   cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
@@ -38,5 +39,10 @@ while true; do
   echo "CPU: $cpu_usage%"
   echo "Memory: $memory_usage%"
   echo "Disk: $disk_usage%"
+
+# Log resource usage to a file
+log_entry="$(date '+%Y-%m-%d %H:%M:%S') CPU: $cpu_usage% Memory: $memory_usage% Disk: $disk_usage%"
+echo "$log_entry" >> /Users/za/Code/github/lab_projects/resource_usage.log
+
   sleep 2
 done
