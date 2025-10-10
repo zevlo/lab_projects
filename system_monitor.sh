@@ -26,3 +26,12 @@ memory_usage=${memory_usage%.*}
 if ((memory_usage >= MEMORY_THRESHOLD)); then
   send_alert "Memory" "$memory_usage"
 fi
+
+# Monitor disk usage
+disk_usage=$(df -h / | awk '/\// {print $(NF-1)}')
+disk_usage=${disk_usage%?} # Remove the % sign
+echo "Current disk usage: $disk_usage%"
+
+if ((disk_usage >= DISK_THRESHOLD)); then
+  send_alert "Disk" "$disk_usage"
+fi
