@@ -152,6 +152,12 @@ add_task() {
 
   read -p "Enter any additional parameters (press Enter to skip): " parameters
 
+  # Ask for optional description
+  read -p "Enter a description for this task (optional, press Enter to skip): " description
+
+  # Generate timestamp
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
   # Show what will be added
   echo
   echo "=========================================="
@@ -160,8 +166,17 @@ add_task() {
   echo "Schedule: $schedule"
   echo "Cron format: $cron_schedule"
   echo "Command: $command $parameters"
+  if [ -n "$description" ]; then
+    echo "Description: $description"
+  fi
+  echo "Added on: $timestamp"
   echo
   echo "Full crontab entry:"
+  if [ -n "$description" ]; then
+    echo "  # $description (added: $timestamp)"
+  else
+    echo "  # Task added: $timestamp"
+  fi
   echo "  $cron_schedule $command $parameters"
   echo "=========================================="
   echo
@@ -173,9 +188,14 @@ add_task() {
     return
   fi
 
-  # Add the task to the crontab
+  # Add the task to the crontab with comment
   if (
     crontab -l 2> /dev/null
+    if [ -n "$description" ]; then
+      echo "# $description (added: $timestamp)"
+    else
+      echo "# Task added: $timestamp"
+    fi
     echo "$cron_schedule $command $parameters"
   ) | crontab - 2>/dev/null; then
     echo "Task scheduled successfully!"
@@ -190,7 +210,7 @@ add_task() {
 
 # Function to remove a task
 remove_task() {
-  # Get current crontab entries
+  # Get current crontab entries (excluding comments and blank lines for counting actual tasks)
   local tasks=$(crontab -l 2>/dev/null)
 
   if [ -z "$tasks" ]; then
@@ -199,12 +219,12 @@ remove_task() {
     return
   fi
 
-  # Display tasks with line numbers
+  # Display tasks with line numbers (including comments for context)
   echo "Current scheduled tasks:"
   echo "$tasks" | nl -w 2 -s '. '
   echo
 
-  read -p "Enter the task number to remove (or 0 to cancel): " task_num
+  read -p "Enter the line number to remove (or 0 to cancel): " task_num
 
   # Validate input
   if [ "$task_num" -eq 0 ] 2>/dev/null; then
@@ -221,9 +241,15 @@ remove_task() {
     return
   fi
 
-  # Show the task to be removed
-  local task_to_remove=$(echo "$tasks" | sed -n "${task_num}p")
-  echo "Task to be removed: $task_to_remove"
+  # Show the line to be removed
+  local line_to_remove=$(echo "$tasks" | sed -n "${task_num}p")
+  echo "Line to be removed: $line_to_remove"
+
+  # Check if it's a comment line
+  if [[ "$line_to_remove" =~ ^#.*$ ]]; then
+    echo "Note: This is a comment line."
+  fi
+
   read -p "Are you sure? (y/n): " confirm
 
   if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
@@ -232,12 +258,12 @@ remove_task() {
     return
   fi
 
-  # Remove the specific task
+  # Remove the specific line
   if echo "$tasks" | sed "${task_num}d" | crontab - 2>/dev/null; then
-    echo "Task removed successfully."
+    echo "Line removed successfully."
     echo
   else
-    echo "Error: Failed to remove task from crontab. Please check your permissions."
+    echo "Error: Failed to remove line from crontab. Please check your permissions."
     echo
     return 1
   fi
@@ -262,9 +288,28 @@ preview_tasks() {
   echo
 
   local count=0
+  local last_comment=""
   while IFS= read -r line; do
+    # Check if line is a comment
+    if [[ "$line" =~ ^#.*$ ]]; then
+      last_comment="$line"
+      continue
+    fi
+
+    # Skip empty lines
+    if [ -z "$line" ]; then
+      continue
+    fi
+
     ((count++))
     echo "Task #$count:"
+
+    # Display the comment if there was one before this task
+    if [ -n "$last_comment" ]; then
+      echo "  Description: ${last_comment#\# }"
+      last_comment=""
+    fi
+
     echo "  Cron entry: $line"
 
     # Extract cron schedule parts
