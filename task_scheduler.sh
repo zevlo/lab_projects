@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Check if crontab command is available
+if ! command -v crontab &> /dev/null; then
+  echo "Error: crontab command not found. This script requires cron to be installed."
+  exit 1
+fi
+
+# Check if user has permission to use crontab
+if ! crontab -l &> /dev/null && [ $? -ne 0 ] && ! echo "" | crontab - &> /dev/null; then
+  echo "Error: You do not have permission to use crontab."
+  echo "Please contact your system administrator."
+  exit 1
+fi
+
 # Function to display the scheduled tasks
 list_tasks() {
   local tasks=$(crontab -l 2>/dev/null)
@@ -154,14 +167,18 @@ add_task() {
   fi
 
   # Add the task to the crontab
-  (
+  if (
     crontab -l 2> /dev/null
     echo "$cron_schedule $command $parameters"
-  ) | crontab -
-
-  echo "Task scheduled successfully!"
-  echo "Run 'crontab -l' to verify, or use option 1 to list tasks."
-  echo
+  ) | crontab - 2>/dev/null; then
+    echo "Task scheduled successfully!"
+    echo "Run 'crontab -l' to verify, or use option 1 to list tasks."
+    echo
+  else
+    echo "Error: Failed to add task to crontab. Please check your permissions."
+    echo
+    return 1
+  fi
 }
 
 # Function to remove a task
@@ -209,11 +226,18 @@ remove_task() {
   fi
 
   # Remove the specific task
-  echo "$tasks" | sed "${task_num}d" | crontab -
-
-  echo "Task removed successfully."
-  echo
+  if echo "$tasks" | sed "${task_num}d" | crontab - 2>/dev/null; then
+    echo "Task removed successfully."
+    echo
+  else
+    echo "Error: Failed to remove task from crontab. Please check your permissions."
+    echo
+    return 1
+  fi
 }
+
+# Trap to handle script interruption
+trap 'echo ""; echo "Script interrupted. Exiting..."; exit 130' INT TERM
 
 # Main menu loop
 while true; do
@@ -234,17 +258,26 @@ while true; do
 
   case $choice in
     1)
-      list_tasks
+      if ! list_tasks; then
+        echo "Warning: An error occurred while listing tasks."
+        echo
+      fi
       ;;
     2)
-      add_task
+      if ! add_task; then
+        echo "Warning: Task was not added."
+        echo
+      fi
       ;;
     3)
-      remove_task
+      if ! remove_task; then
+        echo "Warning: Task was not removed."
+        echo
+      fi
       ;;
     4)
       echo "Exiting Task Scheduler. Goodbye!"
-      break
+      exit 0
       ;;
     *)
       echo "Error: Invalid choice '$choice'. Please enter a number between 1 and 4."
