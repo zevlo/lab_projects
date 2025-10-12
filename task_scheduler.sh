@@ -49,3 +49,33 @@ remove_task() {
   echo "Task removed successfully."
   echo
 }
+
+# Main menu loop
+while true; do
+  echo "Task Scheduler"
+  echo "1. List scheduled tasks"
+  echo "2. Add a task"
+  echo "3. Remove a task"
+  echo "4. Exit"
+  read -p "Enter your choice: " choice
+  echo
+
+  case $choice in
+    1)
+      list_tasks
+      ;;
+    2)
+      add_task
+      ;;
+    3)
+      remove_task
+      ;;
+    4)
+      break
+      ;;
+    *)
+      echo "Invalid choice. Please try again."
+      echo
+      ;;
+  esac
+done
