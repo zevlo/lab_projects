@@ -154,11 +154,18 @@ add_task() {
 
   # Show what will be added
   echo
-  echo "The following task will be scheduled:"
-  echo "Schedule: $schedule ($cron_schedule)"
+  echo "=========================================="
+  echo "PREVIEW: Task to be scheduled"
+  echo "=========================================="
+  echo "Schedule: $schedule"
+  echo "Cron format: $cron_schedule"
   echo "Command: $command $parameters"
   echo
-  read -p "Confirm? (y/n): " confirm
+  echo "Full crontab entry:"
+  echo "  $cron_schedule $command $parameters"
+  echo "=========================================="
+  echo
+  read -p "Do you want to add this task? (y/n): " confirm
 
   if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
     echo "Task scheduling cancelled."
@@ -239,13 +246,69 @@ remove_task() {
 # Trap to handle script interruption
 trap 'echo ""; echo "Script interrupted. Exiting..."; exit 130' INT TERM
 
+# Function to preview all tasks with explanations
+preview_tasks() {
+  local tasks=$(crontab -l 2>/dev/null)
+
+  if [ -z "$tasks" ]; then
+    echo "No scheduled tasks found."
+    echo
+    return
+  fi
+
+  echo "=========================================="
+  echo "SCHEDULED TASKS WITH EXPLANATIONS"
+  echo "=========================================="
+  echo
+
+  local count=0
+  while IFS= read -r line; do
+    ((count++))
+    echo "Task #$count:"
+    echo "  Cron entry: $line"
+
+    # Extract cron schedule parts
+    local minute=$(echo "$line" | awk '{print $1}')
+    local hour=$(echo "$line" | awk '{print $2}')
+    local day_month=$(echo "$line" | awk '{print $3}')
+    local month=$(echo "$line" | awk '{print $4}')
+    local day_week=$(echo "$line" | awk '{print $5}')
+    local command=$(echo "$line" | cut -d' ' -f6-)
+
+    # Interpret the schedule
+    echo -n "  Runs: "
+
+    # Check for interval patterns
+    if [[ "$minute" == *"/"* ]]; then
+      local interval=$(echo "$minute" | cut -d'/' -f2)
+      echo "Every $interval minutes"
+    elif [ "$minute" = "0" ] && [ "$hour" = "*" ]; then
+      echo "Hourly (at the start of every hour)"
+    elif [ "$hour" != "*" ] && [ "$day_week" = "*" ] && [ "$day_month" = "*" ]; then
+      echo "Daily at $(printf '%02d:%02d' $hour $minute)"
+    elif [ "$day_week" != "*" ]; then
+      local day_names=("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday")
+      echo "Weekly on ${day_names[$day_week]} at $(printf '%02d:%02d' $hour $minute)"
+    else
+      echo "Custom schedule"
+    fi
+
+    echo "  Command: $command"
+    echo
+  done <<< "$tasks"
+
+  echo "=========================================="
+  echo
+}
+
 # Main menu loop
 while true; do
   echo "Task Scheduler"
   echo "1. List scheduled tasks"
   echo "2. Add a task"
   echo "3. Remove a task"
-  echo "4. Exit"
+  echo "4. Preview tasks with explanations"
+  echo "5. Exit"
   read -p "Enter your choice: " choice
   echo
 
@@ -276,11 +339,17 @@ while true; do
       fi
       ;;
     4)
+      if ! preview_tasks; then
+        echo "Warning: An error occurred while previewing tasks."
+        echo
+      fi
+      ;;
+    5)
       echo "Exiting Task Scheduler. Goodbye!"
       exit 0
       ;;
     *)
-      echo "Error: Invalid choice '$choice'. Please enter a number between 1 and 4."
+      echo "Error: Invalid choice '$choice'. Please enter a number between 1 and 5."
       echo
       ;;
   esac
