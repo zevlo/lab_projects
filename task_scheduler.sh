@@ -18,8 +18,36 @@ list_tasks() {
 # Function to add a new task
 add_task() {
   read -p "Enter the command or script to be executed: " command
+
+  # Validate command is not empty
+  if [ -z "$command" ]; then
+    echo "Error: Command cannot be empty."
+    echo
+    return
+  fi
+
+  # Check if command exists (extract just the command name, not full path or parameters)
+  local cmd_name=$(echo "$command" | awk '{print $1}')
+  if ! command -v "$cmd_name" &> /dev/null && [ ! -f "$cmd_name" ]; then
+    echo "Warning: Command '$cmd_name' not found in PATH or as a file."
+    read -p "Do you want to continue anyway? (y/n): " continue_choice
+    if [ "$continue_choice" != "y" ] && [ "$continue_choice" != "Y" ]; then
+      echo "Task scheduling cancelled."
+      echo
+      return
+    fi
+  fi
+
   read -p "Enter the schedule (hourly, daily, weekly): " schedule
-  read -p "Enter any additional parameters: " parameters
+
+  # Validate and normalize schedule input
+  schedule=$(echo "$schedule" | tr '[:upper:]' '[:lower:]' | xargs)
+
+  if [ -z "$schedule" ]; then
+    echo "Error: Schedule cannot be empty."
+    echo
+    return
+  fi
 
   case $schedule in
     hourly)
@@ -32,10 +60,13 @@ add_task() {
       cron_schedule="0 0 * * 0"
       ;;
     *)
-      echo "Invalid schedule. Please choose hourly, daily, or weekly."
+      echo "Error: Invalid schedule '$schedule'. Please choose hourly, daily, or weekly."
+      echo
       return
       ;;
   esac
+
+  read -p "Enter any additional parameters (press Enter to skip): " parameters
 
   # Show what will be added
   echo
@@ -123,6 +154,13 @@ while true; do
   read -p "Enter your choice: " choice
   echo
 
+  # Validate choice input
+  if [ -z "$choice" ]; then
+    echo "Error: Please enter a choice."
+    echo
+    continue
+  fi
+
   case $choice in
     1)
       list_tasks
@@ -134,10 +172,11 @@ while true; do
       remove_task
       ;;
     4)
+      echo "Exiting Task Scheduler. Goodbye!"
       break
       ;;
     *)
-      echo "Invalid choice. Please try again."
+      echo "Error: Invalid choice '$choice'. Please enter a number between 1 and 4."
       echo
       ;;
   esac
