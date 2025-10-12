@@ -2,8 +2,16 @@
 
 # Function to display the scheduled tasks
 list_tasks() {
+  local tasks=$(crontab -l 2>/dev/null)
+
+  if [ -z "$tasks" ]; then
+    echo "No scheduled tasks found."
+    echo
+    return
+  fi
+
   echo "Scheduled tasks:"
-  crontab -l
+  echo "$tasks"
   echo
 }
 
@@ -29,13 +37,28 @@ add_task() {
       ;;
   esac
 
+  # Show what will be added
+  echo
+  echo "The following task will be scheduled:"
+  echo "Schedule: $schedule ($cron_schedule)"
+  echo "Command: $command $parameters"
+  echo
+  read -p "Confirm? (y/n): " confirm
+
+  if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+    echo "Task scheduling cancelled."
+    echo
+    return
+  fi
+
   # Add the task to the crontab
   (
     crontab -l 2> /dev/null
     echo "$cron_schedule $command $parameters"
   ) | crontab -
 
-  echo "Task scheduled successfully."
+  echo "Task scheduled successfully!"
+  echo "Run 'crontab -l' to verify, or use option 1 to list tasks."
   echo
 }
 
