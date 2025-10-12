@@ -38,29 +38,100 @@ add_task() {
     fi
   fi
 
-  read -p "Enter the schedule (hourly, daily, weekly): " schedule
+  echo "Schedule options:"
+  echo "  1. Hourly (at the start of every hour)"
+  echo "  2. Daily (custom time)"
+  echo "  3. Weekly (custom day and time)"
+  echo "  4. Every N minutes"
+  read -p "Enter schedule choice (1-4): " schedule_choice
 
-  # Validate and normalize schedule input
-  schedule=$(echo "$schedule" | tr '[:upper:]' '[:lower:]' | xargs)
-
-  if [ -z "$schedule" ]; then
-    echo "Error: Schedule cannot be empty."
+  # Validate schedule choice
+  if [ -z "$schedule_choice" ]; then
+    echo "Error: Schedule choice cannot be empty."
     echo
     return
   fi
 
-  case $schedule in
-    hourly)
+  case $schedule_choice in
+    1)
       cron_schedule="0 * * * *"
+      schedule="hourly"
       ;;
-    daily)
-      cron_schedule="0 0 * * *"
+    2)
+      read -p "Enter hour (0-23, default 0 for midnight): " hour
+      hour=${hour:-0}
+
+      if ! [[ "$hour" =~ ^[0-9]+$ ]] || [ "$hour" -lt 0 ] || [ "$hour" -gt 23 ]; then
+        echo "Error: Invalid hour. Must be between 0 and 23."
+        echo
+        return
+      fi
+
+      read -p "Enter minute (0-59, default 0): " minute
+      minute=${minute:-0}
+
+      if ! [[ "$minute" =~ ^[0-9]+$ ]] || [ "$minute" -lt 0 ] || [ "$minute" -gt 59 ]; then
+        echo "Error: Invalid minute. Must be between 0 and 59."
+        echo
+        return
+      fi
+
+      cron_schedule="$minute $hour * * *"
+      schedule="daily at $(printf '%02d:%02d' $hour $minute)"
       ;;
-    weekly)
-      cron_schedule="0 0 * * 0"
+    3)
+      echo "Days: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday"
+      read -p "Enter day (0-6, default 0 for Sunday): " day
+      day=${day:-0}
+
+      if ! [[ "$day" =~ ^[0-9]+$ ]] || [ "$day" -lt 0 ] || [ "$day" -gt 6 ]; then
+        echo "Error: Invalid day. Must be between 0 and 6."
+        echo
+        return
+      fi
+
+      read -p "Enter hour (0-23, default 0): " hour
+      hour=${hour:-0}
+
+      if ! [[ "$hour" =~ ^[0-9]+$ ]] || [ "$hour" -lt 0 ] || [ "$hour" -gt 23 ]; then
+        echo "Error: Invalid hour. Must be between 0 and 23."
+        echo
+        return
+      fi
+
+      read -p "Enter minute (0-59, default 0): " minute
+      minute=${minute:-0}
+
+      if ! [[ "$minute" =~ ^[0-9]+$ ]] || [ "$minute" -lt 0 ] || [ "$minute" -gt 59 ]; then
+        echo "Error: Invalid minute. Must be between 0 and 59."
+        echo
+        return
+      fi
+
+      local day_names=("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday")
+      cron_schedule="$minute $hour * * $day"
+      schedule="weekly on ${day_names[$day]} at $(printf '%02d:%02d' $hour $minute)"
+      ;;
+    4)
+      read -p "Enter interval in minutes (1-59): " interval
+
+      if [ -z "$interval" ]; then
+        echo "Error: Interval cannot be empty."
+        echo
+        return
+      fi
+
+      if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 1 ] || [ "$interval" -gt 59 ]; then
+        echo "Error: Invalid interval. Must be between 1 and 59 minutes."
+        echo
+        return
+      fi
+
+      cron_schedule="*/$interval * * * *"
+      schedule="every $interval minutes"
       ;;
     *)
-      echo "Error: Invalid schedule '$schedule'. Please choose hourly, daily, or weekly."
+      echo "Error: Invalid schedule choice '$schedule_choice'. Please enter 1, 2, 3, or 4."
       echo
       return
       ;;
