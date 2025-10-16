@@ -70,7 +70,9 @@ function dismenu() {
         draw_border
         echo -ne "\033[22;2H"
         read -p "Which file do you want to use for typing game practice: " file
-        if [ ! -f "$file" ]; then
+        if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+          echo -e "\033[23;2HError: File doesn't exist or is not readable!"
+          sleep 2
           dismenu
         else
           exec 4< $file # Create a file pipeline.
@@ -389,4 +391,4 @@ else
   exit 1
 fi
 
-exit 1
+exit 0
