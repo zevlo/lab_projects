@@ -1,25 +1,32 @@
 #!/bin/bash
 
-# get.sh - Get Running Program on a Specified Port
-# This script checks if a program is running on a specified port. If no program is running, it prints "OK".
+# get.sh - Get information about the program running on a specified port.
+# This script checks for a program listening on a given TCP port.
+# If no program is found, it prints "OK".
+# Otherwise, it prints the PID and the full command path.
 
-# Check if the port number is provided as an argument
+# Check if a port number is provided as an argument.
 if [ -z "$1" ]; then
-  echo "Please provide a port number."
+  echo "Usage: $0 <port_number>"
   exit 1
 fi
 
-# Get the port number
-port=$1
+port_number=$1
 
-# Check if the port is in use
-process=$(lsof -i :$port -sTCP:LISTEN -Fp | sed 's/^p//')
+# Use lsof to find the PID of the process listening on the specified port.
+# -i :$port_number: Search for processes with internet files open on this port.
+# -sTCP:LISTEN: Filter for TCP connections in the LISTEN state.
+# -Fp: Output only the PID, prefixed with 'p'.
+pid=$(lsof -i :$port_number -sTCP:LISTEN -Fp | sed 's/^p//')
 
-# Check if a program is running
-if [ -z "$process" ]; then
+# Check if a process was found.
+if [ -z "$pid" ]; then
   echo "OK"
 else
-  # Get the full path of the program
-  path=$(ps -p $process -o args=)
-  echo "$path" | awk '{print $1}'
-fi
+  # Use ps to get the full command path for the given PID.
+  # -p $pid: Specify the process ID.
+  # -o comm=: Get the command name (executable path).
+  command_path=$(ps -p $pid -o comm=)
+  echo "PID: $pid"
+  echo "Command: $command_path"
+fi%
