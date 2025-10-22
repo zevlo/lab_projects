@@ -26,6 +26,8 @@ void init_wall();
 void init_head();
 void drop(int sig);
 int set_ticker(int n);
+void cleanup();
+void free_obstacles();
 
 int main()
 {
@@ -48,9 +50,8 @@ int main()
 			if ((char)inch() == CHAR_STONE)
 			{
 				// Bird collided with a stone, end the game
-				set_ticker(0);
 				sleep(1);
-				endwin();
+				cleanup();
 				exit(0);
 			}
 		}
@@ -68,7 +69,7 @@ int main()
 		{
 			// Quit the game
 			sleep(1);
-			endwin();
+			cleanup();
 			exit(0);
 		}
 	}
@@ -110,9 +111,8 @@ void drop(int sig)
 	if ((char)inch() == CHAR_STONE)
 	{
 		// Bird collided with a stone, end the game
-		set_ticker(0);
 		sleep(1);
-		endwin();
+		cleanup();
 		exit(0);
 	}
 
@@ -255,4 +255,34 @@ void init_draw()
 		}
 		sleep(1);
 	}
+}
+
+// Free all allocated memory for obstacles
+void free_obstacles()
+{
+	Node current = head;
+	Node next;
+	
+	while (current != NULL)
+	{
+		next = current->next;
+		free(current);
+		current = next;
+	}
+	
+	head = NULL;
+	tail = NULL;
+}
+
+// Cleanup function to properly free resources and exit
+void cleanup()
+{
+	// Stop the timer
+	set_ticker(0);
+	
+	// Free all allocated memory
+	free_obstacles();
+	
+	// End ncurses mode
+	endwin();
 }
