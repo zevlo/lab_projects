@@ -11,7 +11,7 @@ grep -E "^PermitRootLogin|^PasswordAuthentication" /etc/ssh/sshd_config
 
 # 3. Check for available package updates
 echo -e "\n** Package Update Check **"
-Sudo apt update && apt list - upgradable
+sudo apt update && apt list --upgradable
 
 # 4. Check for open listening ports
 echo -e "\n** Open Ports **"
